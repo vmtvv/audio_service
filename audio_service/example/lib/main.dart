@@ -23,14 +23,37 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audio_service_example/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:timezone/data/latest.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 // You might want to provide this using dependency injection rather than a
 // global variable.
 late AudioHandler _audioHandler;
+final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+@pragma('vm:entry-point')
+void handleBackgroundNotification(NotificationResponse response) {
+  print('Background notification action: ${response.actionId}');
+}
 
 Future<void> main() async {
+  print('Main function called');
+
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // This is just an example call
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+
+  print('SystemChrome set preferred orientations');
+
   _audioHandler = await AudioService.init(
     builder: () => AudioPlayerHandler(),
     config: const AudioServiceConfig(
@@ -39,6 +62,17 @@ Future<void> main() async {
       androidNotificationOngoing: true,
     ),
   );
+
+  initializeTimeZones();
+
+  await _flutterLocalNotificationsPlugin.initialize(
+    const InitializationSettings(
+      android:
+          AndroidInitializationSettings('@drawable/baseline_forward_30_24'),
+    ),
+    onDidReceiveBackgroundNotificationResponse: handleBackgroundNotification,
+  );
+
   runApp(const MyApp());
 }
 
@@ -124,9 +158,52 @@ class MainScreen extends StatelessWidget {
                     "Processing state: ${describeEnum(processingState)}");
               },
             ),
+            const SizedBox(height: 40),
+            FilledButton(
+                onPressed: _scheduleNotification,
+                child: const Text('Schedule 5s notification')),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _scheduleNotification() async {
+    final status = await Permission.notification.status;
+    final isGranted = status.isGranted;
+
+    if (!isGranted) {
+      await Permission.notification.request();
+    }
+
+    const androidNotificationDetails = AndroidNotificationDetails(
+      'test_channel',
+      'test_channel_name',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@drawable/baseline_forward_30_24',
+      actions: [
+        AndroidNotificationAction(
+          'action_1',
+          'Action',
+        ),
+      ],
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidNotificationDetails,
+    );
+
+    await _flutterLocalNotificationsPlugin.zonedSchedule(
+      0,
+      'Notification with action',
+      'Use action to handle the notification',
+      tz.TZDateTime.from(
+          DateTime.now().add(const Duration(seconds: 5)), tz.local),
+      notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 

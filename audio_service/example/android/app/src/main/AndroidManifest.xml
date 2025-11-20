@@ -9,6 +9,12 @@
     <!-- For example_android_songs example -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
+    <!-- Local notifications permissions -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:label="Audio Service Demo"
         android:name="${applicationName}"
@@ -52,6 +58,18 @@
             tools:ignore="Instantiatable">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+
+         <!-- For local notifications -->
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </receiver>
 
